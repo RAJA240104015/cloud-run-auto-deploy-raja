@@ -1,2 +1,2 @@
 # cloud-run-auto-deploy-raja
-trigger gcloud 3
+trigger gcloud 4
