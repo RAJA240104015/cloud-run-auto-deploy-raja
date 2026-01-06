@@ -1,23 +1,11 @@
 steps:
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -t
-      - gcr.io/$PROJECT_ID/n8n
-      - .
-
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - gcr.io/$PROJECT_ID/n8n
-
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
       - run
       - deploy
       - n8n-raja
-      - --image=gcr.io/$PROJECT_ID/n8n
+      - --source=.
       - --region=us-west1
       - --platform=managed
       - --allow-unauthenticated
