@@ -7,8 +7,8 @@ on:
 
 env:
   SERVICE_NAME: my-cloudrun-service
-  GAR_LOCATION: asia-southeast2
-  REPOSITORY: my-repo
+  GAR_LOCATION: us-west1
+  REPOSITORY: cloud-run.auto-deploy-raja
   IMAGE: my-app
 
 jobs:
