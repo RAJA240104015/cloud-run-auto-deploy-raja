@@ -7,7 +7,7 @@ on:
 
 env:
   SERVICE_NAME: cloudrun-app
-  REGION: ${{ secrets.GCP_REGION }}
+  REGION: us-west1
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REPO_NAME: cloud-run-auto-deploy-raja
   IMAGE_NAME: cloudrun-app
@@ -32,7 +32,7 @@ jobs:
 
       - name: Configure Docker
         run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+          gcloud auth configure-docker us-west1-docker.pkg.dev --quiet
 
       - name: Build Docker image
         run: |
