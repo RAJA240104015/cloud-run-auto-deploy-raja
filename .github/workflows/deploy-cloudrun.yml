@@ -1,4 +1,4 @@
-name: Build & Deploy Cloud Run
+name: Deploy to Cloud Run
 
 on:
   push:
@@ -6,69 +6,46 @@ on:
       - main
 
 env:
-  SERVICE_NAME: my-cloudrun-service
-  GAR_LOCATION: us-west1
-  REPOSITORY: cloud-run-auto-deploy-raja
-  IMAGE_NAME: my-app
+  SERVICE_NAME: cloudrun-app
+  REGION: ${{ secrets.GCP_REGION }}
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REPO_NAME: cloud-run-auto-deploy-raja
+  IMAGE_NAME: cloudrun-app
 
 jobs:
-  build:
-    name: Build & Push Image
+  deploy:
     runs-on: ubuntu-latest
 
-    outputs:
-      image: ${{ steps.image.outputs.image }}
-
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Auth to Google Cloud
+      - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
 
-      - name: Configure Docker for Artifact Registry
+      - name: Configure Docker
         run: |
-          gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
       - name: Build Docker image
         run: |
-          docker build \
-            -t $GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} \
-            .
+          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
       - name: Push Docker image
         run: |
-          docker push \
-            $GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      - name: Export image reference
-        id: image
+      - name: Deploy to Cloud Run
         run: |
-          echo "image=$GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}" >> $GITHUB_OUTPUT
-
-  deploy:
-    name: Deploy to Cloud Run
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Auth to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Deploy service
-        run: |
-          gcloud run deploy $SERVICE_NAME \
-            --image ${{ needs.build.outputs.image }} \
-            --region $GAR_LOCATION \
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated
