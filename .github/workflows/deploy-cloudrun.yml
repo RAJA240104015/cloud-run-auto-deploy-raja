@@ -8,7 +8,7 @@ on:
 env:
   SERVICE_NAME: cloudrun-app
   REGION: us-west1
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  PROJECT_ID: udb-ti-24a1
   REPO_NAME: cloud-run-auto-deploy-raja
   IMAGE_NAME: cloudrun-app
 
