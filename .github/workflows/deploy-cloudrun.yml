@@ -1,4 +1,4 @@
-name: Deploy to Cloud Run
+name: Build & Deploy Cloud Run
 
 on:
   push:
@@ -8,15 +8,19 @@ on:
 env:
   SERVICE_NAME: my-cloudrun-service
   GAR_LOCATION: us-west1
-  REPOSITORY: cloud-run.auto-deploy-raja
-  IMAGE: my-app
+  REPOSITORY: cloud-run-auto-deploy-raja
+  IMAGE_NAME: my-app
 
 jobs:
-  deploy:
+  build:
+    name: Build & Push Image
     runs-on: ubuntu-latest
 
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Auth to Google Cloud
@@ -24,25 +28,47 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up gcloud
+      - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker
+      - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev
 
       - name: Build Docker image
         run: |
-          docker build -t $GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE:latest .
+          docker build \
+            -t $GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} \
+            .
 
       - name: Push Docker image
         run: |
-          docker push $GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE:latest
+          docker push \
+            $GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}
 
-      - name: Deploy to Cloud Run
+      - name: Export image reference
+        id: image
+        run: |
+          echo "image=$GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy service
         run: |
           gcloud run deploy $SERVICE_NAME \
-            --image $GAR_LOCATION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$REPOSITORY/$IMAGE:latest \
+            --image ${{ needs.build.outputs.image }} \
             --region $GAR_LOCATION \
             --platform managed \
             --allow-unauthenticated
