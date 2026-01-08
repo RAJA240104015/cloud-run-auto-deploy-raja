@@ -1,11 +1,12 @@
-FROM node:20-alpine
+FROM python:3.11-slim
 
 WORKDIR /app
-
-COPY package*.json ./
-RUN npm install --production
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+ENV PORT=8080
 EXPOSE 8080
-CMD ["npm", "start"]
+
+CMD ["python", "app.py"]
